@@ -1,0 +1,15 @@
+node_modules/
+artifacts/
+cache/
+.env
+
+frontend/node_modules/
+frontend/dist/
+
+# ABI (generated file - should NOT be tracked)
+frontend/src/abi/EvidenceRegistry.json
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

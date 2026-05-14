@@ -1,0 +1,20 @@
+{
+  "name": "journalist-evidence-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "ethers": "^6.11.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.3",
+    "web3.storage": "^4.5.5"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}
