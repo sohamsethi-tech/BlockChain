@@ -77,7 +77,7 @@ export default function SubmitPage({ evidence }) {
       <div className="card card--gate">
         <div className="gate-icon">⛓️</div>
         <h2>Wrong Network</h2>
-        <p>Please switch MetaMask to the Hardhat Local network (Chain ID 31337).</p>
+        <p>Please switch MetaMask to the Sepolia Test network (Chain ID 11155111).</p>
         <button className="btn btn--primary btn--lg" onClick={switchNetwork}>
           Switch Network
         </button>
