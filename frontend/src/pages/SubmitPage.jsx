@@ -18,13 +18,13 @@ export default function SubmitPage({ evidence }) {
 
   const { submitEvidence, submitting, submitStep, error, setError } = evidence;
 
-  const [file,         setFile]         = useState(null);
-  const [fileHash,     setFileHash]     = useState("");
-  const [title,        setTitle]        = useState("");
-  const [category,     setCategory]     = useState(CATEGORIES[0]);
+  const [file, setFile] = useState(null);
+  const [fileHash, setFileHash] = useState("");
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState(CATEGORIES[0]);
   const [evidenceType, setEvidenceType] = useState(0);
-  const [result,       setResult]       = useState(null);
-  const [dragOver,     setDragOver]     = useState(false);
+  const [result, setResult] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef();
 
   const handleFile = async (f) => {
@@ -51,7 +51,7 @@ export default function SubmitPage({ evidence }) {
       setFile(null);
       setFileHash("");
       setTitle("");
-    } catch (_) {}
+    } catch (_) { }
   };
 
   // ── Guards ─────────────────────────────────────────────────────────────────
@@ -121,10 +121,21 @@ export default function SubmitPage({ evidence }) {
             <span className="label">Block</span>
             <span className="mono">#{result.blockNumber}</span>
           </div>
+
           <div className="result-row">
             <span className="label">Tx Hash</span>
-            <span className="mono small break-all">{result.txHash}</span>
+            <a
+              className="mono small break-all"
+              href={`https://sepolia.etherscan.io/tx/${result.txHash}`}
+              target="_blank"
+              rel="noreferrer">
+              {result.txHash}
+            </a>
           </div>
+
+
+
+
         </div>
         <p className="submit-note">
           💡 To prove authenticity later: share the original file with a colleague
@@ -253,7 +264,7 @@ export default function SubmitPage({ evidence }) {
 
         <p className="submit-note">
           MetaMask will ask you to sign a transaction. Gas fees are negligible on
-          the local network. No file data leaves your device.
+          Sepolia testnet. No file data leaves your device.
         </p>
       </div>
     </div>
