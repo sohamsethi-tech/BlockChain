@@ -5,7 +5,7 @@ import { NavLink } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
 export default function WalletBar() {
-  const { address, connectWallet } = useWallet();
+  const { address, isCorrectChain, connectWallet } = useWallet();
 
   const short = address
     ? `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -30,6 +30,15 @@ export default function WalletBar() {
           <div className="wallet-address">
             <span className="wallet-dot" />
             {short}
+            {/* FIX: surface wrong-chain warning immediately */}
+            {!isCorrectChain && (
+              <span
+                className="chain-warning"
+                title="Wrong network — switch to Sepolia"
+              >
+                ⚠️
+              </span>
+            )}
           </div>
         ) : (
           <button className="btn btn--primary btn--sm" onClick={connectWallet}>

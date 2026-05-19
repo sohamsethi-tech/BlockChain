@@ -1,5 +1,5 @@
 // src/pages/EvidenceFeed.jsx
-// Public read-only registry feed. No IPFS links.
+// Public read-only registry feed. Shows IPFS links for new records (Phase 2).
 // Shows: title, category, type, submitter, date, filename, hash.
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -11,10 +11,10 @@ export default function EvidenceFeed({ evidence }) {
   const { address } = useWallet();
   const { fetchEvidencePage, loading } = evidence;
 
-  const [records,  setRecords]  = useState([]);
-  const [total,    setTotal]    = useState(0);
-  const [offset,   setOffset]   = useState(0);
-  const [filter,   setFilter]   = useState("all");
+  const [records, setRecords] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [filter, setFilter] = useState("all");
   const [expanded, setExpanded] = useState(null);
 
   const load = useCallback(async (off = 0) => {
@@ -27,7 +27,7 @@ export default function EvidenceFeed({ evidence }) {
   useEffect(() => { load(0); }, [load]);
 
   const categories = ["all", ...new Set(records.map((r) => r.category))];
-  const filtered   = filter === "all" ? records : records.filter((r) => r.category === filter);
+  const filtered = filter === "all" ? records : records.filter((r) => r.category === filter);
 
   return (
     <div className="page">
@@ -89,7 +89,7 @@ export default function EvidenceFeed({ evidence }) {
             onClick={() => load(Math.max(0, offset - PAGE_SIZE))}
           >← Newer</button>
           <span className="pagination__info">
-            {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}
+            {offset + 1}–{offset + records.length} of {total}
           </span>
           <button
             className="btn btn--ghost"
@@ -107,7 +107,7 @@ function EvidenceCard({ record, expanded, onToggle, currentUser }) {
     record.submitter.toLowerCase() === currentUser.toLowerCase();
 
   const shortSubmitter = `${record.submitter.slice(0, 8)}…${record.submitter.slice(-6)}`;
-  const shortHash      = `${record.evidenceHash.slice(0, 14)}…`;
+  const shortHash = `${record.evidenceHash.slice(0, 14)}…`;
 
   return (
     <div className={`evidence-card ${expanded ? "expanded" : ""} ${isOwn ? "own" : ""}`}>
@@ -142,10 +142,27 @@ function EvidenceCard({ record, expanded, onToggle, currentUser }) {
 
       {expanded && (
         <div className="evidence-card__expanded">
-          <div className="detail-row">
-            <span className="detail-label">Filename</span>
-            <span className="detail-value mono">{record.filename}</span>
-          </div>
+          {record.filename && (
+            <div className="detail-row">
+              <span className="detail-label">Filename</span>
+              <span className="detail-value mono">{record.filename}</span>
+            </div>
+          )}
+
+          {record.ipfsUrl && (
+            <div className="detail-row">
+              <span className="detail-label">IPFS</span>
+              <a
+                className="detail-value mono tiny"
+                href={record.ipfsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                🌐 View on IPFS
+              </a>
+            </div>
+          )}
+
           <div className="detail-row">
             <span className="detail-label">Full SHA-256</span>
             <span className="detail-value mono tiny break-all">{record.evidenceHash}</span>

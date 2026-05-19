@@ -15,7 +15,7 @@ contract EvidenceRegistry {
 
     // ─── ROLES ────────────────────────────────────────────────────────────────
     address public immutable deployerAdmin;
-    mapping(address => bool) public isJournalist;
+    mapping(address => bool)   public isJournalist;
     mapping(address => string) public journalistAlias;
 
     // ─── EVIDENCE RECORD ──────────────────────────────────────────────────────
@@ -32,8 +32,8 @@ contract EvidenceRegistry {
 
     // ─── STORAGE ──────────────────────────────────────────────────────────────
     mapping(bytes32 => EvidenceRecord) private evidenceByHash;
-    bytes32[] private evidenceIndex;
-    mapping(address => bytes32[]) private submitterIndex;
+    bytes32[]                          private evidenceIndex;
+    mapping(address => bytes32[])      private submitterIndex;
 
     // ─── EVENTS ───────────────────────────────────────────────────────────────
     event EvidenceSubmitted(
@@ -45,7 +45,7 @@ contract EvidenceRegistry {
         uint256 timestamp
     );
 
-    event JournalistAdded(address indexed journalist, string alias_);
+    event JournalistAdded  (address indexed journalist, string alias_);
     event JournalistRevoked(address indexed journalist);
 
     // ─── MODIFIERS ────────────────────────────────────────────────────────────
@@ -62,26 +62,27 @@ contract EvidenceRegistry {
     // ─── CONSTRUCTOR ──────────────────────────────────────────────────────────
     constructor() {
         deployerAdmin = msg.sender;
-        isJournalist[msg.sender] = true;
+        isJournalist[msg.sender]    = true;
         journalistAlias[msg.sender] = "Admin";
         emit JournalistAdded(msg.sender, "Admin");
     }
 
-    // ─── ADMIN: JOURNALIST MANAGEMENT ────────────────────────────────────────
+    // ─── ADMIN: JOURNALIST MANAGEMENT ─────────────────────────────────────────
     function addJournalist(address journalist, string calldata alias_)
         external onlyAdmin
     {
         require(journalist != address(0), "Zero address");
         require(!isJournalist[journalist], "Already registered");
-        isJournalist[journalist] = true;
+        isJournalist[journalist]    = true;
         journalistAlias[journalist] = alias_;
         emit JournalistAdded(journalist, alias_);
     }
 
     function revokeJournalist(address journalist) external onlyAdmin {
-        require(isJournalist[journalist], "Not a journalist");
+        require(isJournalist[journalist],    "Not a journalist");
         require(journalist != deployerAdmin, "Cannot revoke admin");
-        isJournalist[journalist] = false;
+        isJournalist[journalist]    = false;
+        journalistAlias[journalist] = "";   // FIX: clear stale alias
         emit JournalistRevoked(journalist);
     }
 
@@ -156,6 +157,7 @@ contract EvidenceRegistry {
         uint256 total = evidenceIndex.length;
         if (offset >= total) return new EvidenceRecord[](0);
 
+        // cap at 50 to bound gas; reverse-iterate for newest-first order
         uint256 cap   = limit > 50 ? 50 : limit;
         uint256 end   = offset + cap;
         if (end > total) end = total;
@@ -163,8 +165,8 @@ contract EvidenceRegistry {
 
         records = new EvidenceRecord[](count);
         for (uint256 i = 0; i < count; i++) {
-            uint256 idx = total - 1 - offset - i;
-            records[i] = evidenceByHash[evidenceIndex[idx]];
+            // safe: i <= count-1, offset+i <= total-1 => no underflow
+            records[i] = evidenceByHash[evidenceIndex[total - 1 - offset - i]];
         }
     }
 
@@ -172,7 +174,7 @@ contract EvidenceRegistry {
         external view
         returns (EvidenceRecord[] memory)
     {
-        bytes32[] memory hashes = submitterIndex[submitter];
+        bytes32[] memory hashes  = submitterIndex[submitter];
         EvidenceRecord[] memory records = new EvidenceRecord[](hashes.length);
         for (uint256 i = 0; i < hashes.length; i++) {
             records[i] = evidenceByHash[hashes[i]];

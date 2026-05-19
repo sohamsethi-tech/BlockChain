@@ -6,6 +6,6 @@ export const NETWORK = {
     symbol: "ETH",
     decimals: 18,
   },
-  rpcUrls: ["https://eth-sepolia.g.alchemy.com/v2/x3pNnBBxFc61mRdSmAhlo"],
+  rpcUrls: [import.meta.env.VITE_ALCHEMY_RPC || "https://rpc.sepolia.org"],
   blockExplorerUrls: ["https://sepolia.etherscan.io"],
 };
