@@ -1,11 +1,9 @@
 // src/pages/EvidenceFeed.jsx
-// Public read-only registry feed. Shows IPFS links for new records (Phase 2).
-// Shows: title, category, type, submitter, date, filename, hash.
-
 import React, { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 24; // Fetch more records to allow effective client-side filtering
 
 export default function EvidenceFeed({ evidence }) {
   const { address } = useWallet();
@@ -15,7 +13,7 @@ export default function EvidenceFeed({ evidence }) {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [filter, setFilter] = useState("all");
-  const [expanded, setExpanded] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = useCallback(async (off = 0) => {
     const res = await fetchEvidencePage(off, PAGE_SIZE);
@@ -24,45 +22,79 @@ export default function EvidenceFeed({ evidence }) {
     setOffset(off);
   }, [fetchEvidencePage]);
 
-  useEffect(() => { load(0); }, [load]);
+  useEffect(() => {
+    load(0);
+  }, [load]);
 
   const categories = ["all", ...new Set(records.map((r) => r.category))];
-  const filtered = filter === "all" ? records : records.filter((r) => r.category === filter);
+
+  const filtered = records.filter((r) => {
+    // Category filter
+    const matchesCategory = filter === "all" || r.category === filter;
+    
+    // Search query filter (title, hash, address, or filename)
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return matchesCategory;
+
+    const cleanHash = r.evidenceHash.replace(/^0x/, "").toLowerCase();
+    const matchesTitle = r.title.toLowerCase().includes(q);
+    const matchesHash = cleanHash.includes(q);
+    const matchesSubmitter = r.submitter.toLowerCase().includes(q);
+    const matchesFilename = r.filename.toLowerCase().includes(q);
+
+    return matchesCategory && (matchesTitle || matchesHash || matchesSubmitter || matchesFilename);
+  });
 
   return (
-    <div className="page">
+    <div className="page explore-page">
       <div className="page-header">
-        <h1>Evidence Registry</h1>
+        <h1>Evidence Ledger</h1>
         <p className="subtitle">
-          {total} record{total !== 1 ? "s" : ""} immutably stored on-chain.
-          Each entry's SHA-256 hash was signed by the journalist who filed it.
+          {total} record{total !== 1 ? "s" : ""} registered on the immutable blockchain.
+          Search and verify primary sources anchored to IPFS.
         </p>
       </div>
 
-      {/* Filter bar */}
-      <div className="filter-bar">
-        {categories.map((c) => (
-          <button
-            key={c}
-            className={`filter-btn ${filter === c ? "active" : ""}`}
-            onClick={() => setFilter(c)}
-          >
-            {c === "all" ? "All" : c}
+      {/* Search and Filter Container */}
+      <div className="search-filter-container">
+        <div className="search-box">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search by title, SHA-256 hash, or journalist address..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="clear-btn" onClick={() => setSearchQuery("")}>✕</button>
+          )}
+        </div>
+
+        {/* Filter bar */}
+        <div className="filter-bar">
+          {categories.map((c) => (
+            <button
+              key={c}
+              className={`filter-btn ${filter === c ? "active" : ""}`}
+              onClick={() => setFilter(c)}
+            >
+              {c === "all" ? "All Categories" : c}
+            </button>
+          ))}
+          <button className="btn btn--ghost btn--sm refresh-btn" onClick={() => load(offset)}>
+            ↺ Refresh
           </button>
-        ))}
-        <button className="btn btn--ghost btn--sm refresh-btn" onClick={() => load(offset)}>
-          ↺ Refresh
-        </button>
+        </div>
       </div>
 
       {loading ? (
         <div className="feed-loading">
           <div className="spinner" />
-          <span>Reading from blockchain…</span>
+          <span>Reading ledger records from blockchain…</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="feed-empty">
-          <span>No evidence records found.</span>
+        <div className="feed-empty card">
+          <span>No matching evidence records found. Try modifying your search or filters.</span>
         </div>
       ) : (
         <div className="evidence-grid">
@@ -70,10 +102,6 @@ export default function EvidenceFeed({ evidence }) {
             <EvidenceCard
               key={r.evidenceHash + i}
               record={r}
-              expanded={expanded === r.evidenceHash}
-              onToggle={() =>
-                setExpanded(expanded === r.evidenceHash ? null : r.evidenceHash)
-              }
               currentUser={address}
             />
           ))}
@@ -102,16 +130,17 @@ export default function EvidenceFeed({ evidence }) {
   );
 }
 
-function EvidenceCard({ record, expanded, onToggle, currentUser }) {
+function EvidenceCard({ record, currentUser }) {
   const isOwn = currentUser &&
     record.submitter.toLowerCase() === currentUser.toLowerCase();
 
   const shortSubmitter = `${record.submitter.slice(0, 8)}…${record.submitter.slice(-6)}`;
-  const shortHash = `${record.evidenceHash.slice(0, 14)}…`;
+  const cleanHash = record.evidenceHash.replace(/^0x/, "");
+  const shortHash = `${cleanHash.slice(0, 16)}…`;
 
   return (
-    <div className={`evidence-card ${expanded ? "expanded" : ""} ${isOwn ? "own" : ""}`}>
-      <div className="evidence-card__header" onClick={onToggle}>
+    <div className={`evidence-card ${isOwn ? "own" : ""}`}>
+      <div className="evidence-card__header">
         <div className="evidence-card__type">
           <span className="type-icon">{record.typeIcon}</span>
           <span className="type-label">{record.typeLabel}</span>
@@ -123,70 +152,37 @@ function EvidenceCard({ record, expanded, onToggle, currentUser }) {
       </div>
 
       <div className="evidence-card__body">
-        <h3 className="evidence-card__title">{record.title}</h3>
+        <h3 className="evidence-card__title">
+          <Link to={`/evidence/${cleanHash}`}>{record.title}</Link>
+        </h3>
+        
         <div className="evidence-card__details">
           <div className="detail-row">
-            <span className="detail-label">Submitted</span>
+            <span className="detail-label">File</span>
+            <span className="detail-value mono truncate" title={record.filename}>{record.filename}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">On-chain Date</span>
             <span className="detail-value">{record.dateStr}</span>
           </div>
           <div className="detail-row">
             <span className="detail-label">By</span>
-            <span className="detail-value mono">{shortSubmitter}</span>
+            <Link to={`/journalist/${record.submitter}`} className="detail-value mono link-style">
+              {shortSubmitter}
+            </Link>
           </div>
           <div className="detail-row">
-            <span className="detail-label">Hash</span>
-            <span className="detail-value mono">{shortHash}</span>
+            <span className="detail-label">SHA-256</span>
+            <span className="detail-value mono" title={cleanHash}>{shortHash}</span>
           </div>
+        </div>
+
+        <div className="evidence-card__actions" style={{ marginTop: "1.25rem" }}>
+          <Link to={`/evidence/${cleanHash}`} className="btn btn--secondary btn--sm btn--full text-center" style={{ display: "block" }}>
+            🛡️ View & Verify Evidence
+          </Link>
         </div>
       </div>
-
-      {expanded && (
-        <div className="evidence-card__expanded">
-          {record.filename && (
-            <div className="detail-row">
-              <span className="detail-label">Filename</span>
-              <span className="detail-value mono">{record.filename}</span>
-            </div>
-          )}
-
-          {record.ipfsUrl && (
-            <div className="detail-row">
-              <span className="detail-label">IPFS</span>
-              <a
-                className="detail-value mono tiny"
-                href={record.ipfsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                🌐 View on IPFS
-              </a>
-            </div>
-          )}
-
-          <div className="detail-row">
-            <span className="detail-label">Full SHA-256</span>
-            <span className="detail-value mono tiny break-all">{record.evidenceHash}</span>
-          </div>
-          <div className="detail-row">
-            <span className="detail-label">Submitter</span>
-            <span className="detail-value mono tiny break-all">{record.submitter}</span>
-          </div>
-          <div className="evidence-card__actions">
-            <button
-              className="btn btn--ghost btn--sm"
-              onClick={() => {
-                navigator.clipboard.writeText(record.evidenceHash);
-              }}
-            >
-              📋 Copy Hash
-            </button>
-          </div>
-        </div>
-      )}
-
-      <button className="evidence-card__toggle" onClick={onToggle}>
-        {expanded ? "▲ Less" : "▼ More"}
-      </button>
     </div>
   );
 }

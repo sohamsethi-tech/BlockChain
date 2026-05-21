@@ -1,7 +1,11 @@
 // src/hooks/useEvidence.js
+// All blockchain interactions for evidence submission, listing, and verification.
+// On-chain storage: hash + IPFS CID + metadata.
 
 import { useState, useCallback } from "react";
 import { ethers } from "ethers";
+import { generateSHA256 } from "../utils/hash.util";
+import { uploadToIPFS } from "../services/ipfs.service";
 
 /* ─────────────────────────────────────────────────────────────
    HELPERS
@@ -16,13 +20,8 @@ export function hexToBytes32(hexStr) {
   return ethers.zeroPadValue("0x" + clean, 32);
 }
 
-// SHA-256 (browser, local only)
-export async function computeFileSHA256(file) {
-  const buffer     = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  const hashArray  = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+// ── Helper: compute SHA-256 in browser (delegated to util) ────────────────────
+export const computeFileSHA256 = generateSHA256;
 
 // fetch with timeout (FIX: prevent indefinite IPFS hang)
 async function fetchWithTimeout(url, options, timeoutMs = 60_000) {
@@ -72,6 +71,8 @@ export function useEvidence(getContract) {
 
   /* ───────────────── SUBMIT ───────────────── */
 
+// ── SUBMIT ─────────────────────────────────────────────────────────────────
+  // Uploads to IPFS first, then stores hash + (ipfsCID | filename) + metadata on-chain.
   const submitEvidence = useCallback(async ({
     file,
     title,
@@ -94,46 +95,25 @@ export function useEvidence(getContract) {
 
       const bytes32Hash = hexToBytes32(sha256Hex);
 
-      // STEP 2: IPFS upload (60s timeout)
-      setSubmitStep("Uploading to IPFS…");
+      // STEP 2: Upload file to Pinata IPFS
+      setSubmitStep("Uploading to IPFS via Pinata…");
+      const ipfsCID = await uploadToIPFS(file);
 
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetchWithTimeout(
-        "https://api.pinata.cloud/pinning/pinFileToIPFS",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_PINATA_JWT}`,
-          },
-          body: formData,
-        },
-        60_000
-      );
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => res.status);
-        throw new Error(`IPFS upload failed: ${text}`);
-      }
-
-      const data = await res.json();
-      ipfsCID = data.IpfsHash;
-
-      // STEP 3: blockchain tx
+      // STEP 3: Sign and submit to blockchain via MetaMask
+      // We store the CID and filename together as CID|filename
       setSubmitStep("Waiting for MetaMask signature…");
 
       const contract = await getContract(true);
 
       const tx = await contract.submitEvidence(
         bytes32Hash,
-        ipfsCID,
+        `${ipfsCID}|${file.name}`,
         evidenceType,
         category,
         title
       );
 
-      // STEP 4: confirm
+      // STEP 4: Wait for block confirmation
       setSubmitStep("Confirming on blockchain…");
       const receipt = await tx.wait(1);
 
@@ -143,6 +123,7 @@ export function useEvidence(getContract) {
         success:     true,
         txHash:      receipt.hash,
         filename:    file.name,
+        ipfsCID:     ipfsCID,
         sha256:      sha256Hex,
         ipfsCID,
         ipfsUrl:     `https://ipfs.io/ipfs/${ipfsCID}`,
@@ -281,23 +262,30 @@ export function useEvidence(getContract) {
     }
   }, [getContract]);
 
-  /* ───────────────── RETURN ───────────────── */
+  // ── FETCH BY HASH ─────────────────────────────────────────────────────────
+  const fetchEvidenceByHash = useCallback(async (sha256Hex) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const bytes32Hash = hexToBytes32(sha256Hex);
+      const contract    = await getContract(false);
+      const exists      = await contract.verifyEvidence(bytes32Hash);
+      if (!exists) return null;
+      const record = await contract.getEvidence(bytes32Hash);
+      return normalizeRecord(record);
+    } catch (e) {
+      setError(e.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [getContract]);
 
   return {
-    submitEvidence,
-    submitting,
-    submitStep,
-
-    fetchEvidencePage,
-    fetchBySubmitter,
-
-    verifyFile,
-    verifyHash,
-    verifying,
-
-    loading,
-    error,
-    setError,
+    submitEvidence,  submitting, submitStep,
+    fetchEvidencePage, fetchBySubmitter, fetchEvidenceByHash,
+    verifyFile, verifyHash, verifying,
+    loading, error, setError,
   };
 }
 
@@ -306,16 +294,14 @@ export function useEvidence(getContract) {
 ───────────────────────────────────────────────────────────── */
 
 function normalizeRecord(r) {
-  const isCID =
-    r.ipfsCID?.startsWith("Qm") ||
-    r.ipfsCID?.startsWith("baf") ||
-    r.ipfsCID?.length > 40;
+  const parts = r.ipfsCID.split("|");
+  const ipfsCID = parts[0];
+  const filename = parts[1] || "evidence_file";
 
   return {
     evidenceHash: r.evidenceHash,
-    ipfsCID:      r.ipfsCID,
-    ipfsUrl:      isCID ? `https://ipfs.io/ipfs/${r.ipfsCID}` : null,
-    filename:     isCID ? null : r.ipfsCID,
+    ipfsCID:      ipfsCID,
+    filename:     filename,
     evidenceType: Number(r.evidenceType),
     category:     r.category,
     title:        r.title,

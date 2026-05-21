@@ -4,6 +4,7 @@
 // Or paste a SHA-256 hash directly.
 
 import React, { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { computeFileSHA256 } from "../hooks/useEvidence";
 
 export default function VerifyPage({ evidence }) {
@@ -43,11 +44,11 @@ export default function VerifyPage({ evidence }) {
         <p className="subtitle">
           Prove a file's authenticity by checking its SHA-256 hash against
           the immutable on-chain registry. No login required.
-          The file is never uploaded — it's hashed entirely in your browser.
+          The file is never uploaded during verification — it's hashed entirely in your browser.
         </p>
       </div>
 
-      <div className="verify-card">
+      <div className="verify-card card">
         {/* Mode toggle */}
         <div className="mode-toggle">
           <button
@@ -158,6 +159,16 @@ export default function VerifyPage({ evidence }) {
                       <span className="detail-value mono tiny break-all">{result.sha256}</span>
                     </div>
                   )}
+                  
+                  <div className="detail-action-link" style={{ marginTop: "1.5rem" }}>
+                    <Link
+                      to={`/evidence/${(result.sha256 || result.record.evidenceHash).replace(/^0x/, "")}`}
+                      className="btn btn--secondary btn--full text-center"
+                      style={{ display: "block" }}
+                    >
+                      🛡️ View Full Evidence Details & Download Source
+                    </Link>
+                  </div>
                 </div>
               </>
             ) : (
