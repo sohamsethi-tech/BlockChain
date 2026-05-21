@@ -145,7 +145,7 @@ export default function SubmitPage({ evidence }) {
         <h1>Submit Evidence</h1>
         <p className="subtitle">
           Submitting as <strong>{journalistAlias || address.slice(0, 10) + "…"}</strong>.
-          The file's SHA-256 hash is recorded on-chain. The file itself stays on your device.
+          The file is pinned to IPFS, and its SHA-256 hash is permanently registered on-chain.
         </p>
       </div>
 
@@ -190,7 +190,7 @@ export default function SubmitPage({ evidence }) {
               <strong>Drop file here or click to browse</strong>
               <span>Images, videos, documents, audio — any format</span>
               <span className="dropzone-note">
-                The file is hashed in your browser and never uploaded anywhere
+                The file is hashed locally and then pinned securely to decentralized IPFS storage
               </span>
             </div>
           )}
@@ -252,8 +252,7 @@ export default function SubmitPage({ evidence }) {
         )}
 
         <p className="submit-note">
-          MetaMask will ask you to sign a transaction. Gas fees are negligible on
-          the local network. No file data leaves your device.
+          MetaMask will ask you to sign a transaction. The file is uploaded securely to IPFS and its cryptographic hash is locked on-chain.
         </p>
       </div>
     </div>
