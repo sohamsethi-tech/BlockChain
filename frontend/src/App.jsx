@@ -3,7 +3,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import { useWallet } from "./context/WalletContext";
+import { WalletProvider, useWallet } from "./context/WalletContext";
 import { useEvidence } from "./hooks/useEvidence";
 
 import WalletBar    from "./components/WalletBar";
@@ -42,8 +42,10 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <WalletProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </WalletProvider>
   );
 }
