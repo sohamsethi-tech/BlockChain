@@ -5,6 +5,7 @@ cache/
 
 frontend/node_modules/
 frontend/dist/
+*.zip
 
 # ABI (generated file - should NOT be tracked)
 frontend/src/abi/EvidenceRegistry.json

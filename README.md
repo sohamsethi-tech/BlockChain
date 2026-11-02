@@ -2,6 +2,10 @@
 
 EvidenceChain is a blockchain-based decentralized evidence verification platform designed for transparent journalism. It enables journalists to submit research, documents, videos, and images, pinning the media assets to IPFS via Pinata while securing their cryptographic hashes (SHA-256) and CIDs on-chain. Users can drag-and-drop any source file to verify its timestamp, submitter identity, and historical authenticity.
 
+## License
+
+Copyright (c) 2026 Soham Sethi. All rights reserved. This project may not be used, copied, modified, or distributed without prior written permission. See [LICENSE](LICENSE).
+
 ---
 
 ## 🛠️ Architecture & Changes Implemented
